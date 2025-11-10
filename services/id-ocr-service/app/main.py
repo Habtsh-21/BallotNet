@@ -1,34 +1,38 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse
-from app.ocr_engine import OCR
-from app.parser import parse_id
-from app.preprocess import preprocess_image
-from app.schemas import OCRResponse
+from fastapi import FastAPI, File, UploadFile, Query
+from .ocr_engine import extract_text
+from .preprocess import preprocess_image
+import shutil
+import os
 from PIL import Image
-import io
 
-app = FastAPI(title="ID OCR Service", version="1.0")
+app = FastAPI(title="National ID OCR Service")
 
-ocr_engine = OCR()
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-@app.post("/extract", response_model=OCRResponse)
-async def extract(file: UploadFile = File(...)):
-    try:
-        image_bytes = await file.read()
-        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        image = preprocess_image(image)
+@app.post("/extract-text")
+async def extract_id_text(
+    file: UploadFile = File(...),
+    preprocess: bool = Query(default=True, description="Apply image preprocessing")
+):
+    """
+    Upload an image and get the raw extracted text.
+    Optionally apply preprocessing (grayscale, contrast, sharpen) if preprocess=true.
+    """
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    
+    # Save uploaded file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-        # OCR using both engines
-        raw_text = ocr_engine.extract_text(image)
+    # Load image
+    img = Image.open(file_path)
 
-        # parse key fields
-        parsed = parse_id(raw_text)
+    # Apply preprocessing if requested
+    # if preprocess:
+    #     img = preprocess_image(img)
+    
+    # OCR extraction
+    text = extract_text(img)
 
-        return JSONResponse(content={
-            "ok": True,
-            "raw_ocr": raw_text,
-            "parsed": parsed
-        })
-
-    except Exception as e:
-        return JSONResponse(content={"ok": False, "error": str(e)}, status_code=500)
+    return {"filename": file.filename, "raw_text": text, "preprocessed": preprocess}
