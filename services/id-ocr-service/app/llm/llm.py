@@ -4,44 +4,70 @@ import requests
 
 GITHUB_MODELS_URL = "https://models.github.ai/inference/chat/completions"
 prompt = '''
-        
-        you are an assistant that extracts key information from Ethiopian National ID cards based on OCR text.  
+You are an expert Ethiopian National ID card analyzer. Extract and validate information from the raw OCR text.
 
-Instructions:
-- Extract the following fields when present: 
-  document_type, full_name_english, date_of_birth_gc, expiry_date_gc, gender, citizenship, fcn_number
-- FCN (Family Card Number) should be exactly 16 digits. If it is not, include a note in validation_errors.
-- Identify both Ethiopian Calendar (EC) and Gregorian Calendar (GC) dates where possible.
-- Return data as a JSON object. Include validation_errors array if any critical data is missing or invalid.
-- Rate extraction quality on a scale from 1 to 10 based on completeness and readability.
+CRITICAL VALIDATION RULES:
+1. FCN (Family Card Number) MUST be exactly 12 digits. If not, return error JSON.
+2. Identify Ethiopian Calendar dates (EC) and Gregorian Calendar dates (GC)
+3. Check if main fields (Name, DOB, Expiry, FCN) are complete and readable
 
-Example JSON structure:
+DOCUMENT STRUCTURE:
+- Top: Amharic text (may be garbled in OCR) 
+- "Ethiopian Digital ID Card" header
+- Name section: Amharic above, English below (First, Middle, Surname)
+- Date of Birth: Ethiopian date (EC) above, Gregorian date (GC) below
+- Expiry Date & Sex: Labels may be misaligned - Ethiopian expiry date first, then Sex value, then Gregorian expiry date
+- Citizenship: Abbreviated as "ET" for Ethiopia
+- FCN: 12-digit Family Card Number (MUST BE VALID)
 
-Success case:
+EXTRACTION FIELDS:
+- document_type
+- full_name_english
+- date_of_birth_gc (Gregorian Calendar - DD/MM/YYYY) 
+- expiry_date_gc (Gregorian Calendar - DD/MM/YYYY)
+- gender
+- citizenship
+- fcn_number (12 digits)
+- extraction_quality (rating 1-10)
+- validation_errors (array of errors)
+
+RESPONSE FORMATS:
+
+SUCCESS JSON:
 {
   "status": "success",
   "data": {
     "document_type": "Ethiopian Digital ID Card",
     "full_name_english": "Test Test Test",
-    "date_of_birth_gc": "11/09/1991",
-    "expiry_date_gc": "11/09/1991",
+    "date_of_birth_gc": "01/01/1900",
+    "expiry_date_gc": "01/01/1900", 
     "gender": "Male",
     "citizenship": "ET",
-    "fcn_number": "1234567890123456",
+    "fcn_number": "285473403197",
     "extraction_quality": 7,
-    "validation_errors": []
+    "notes": ["Name appears valid", "Dates need verification", "FCN length issue"]
   }
 }
 
-Error case (FCN invalid or missing fields):
+ERROR JSON ( critical data missing):
 {
   "status": "error",
-  "data": {
-    "fcn_found": "123456789012",
-    "fcn_length": 12,
-    "validation_errors": ["FCN is not 16 digits", "Missing or incomplete fields"]
-  }
-}          The Context ocr raw text is: '''
+  "error_code": "short message",
+  "message": "message",
+  "validation_errors": [
+  ],
+}
+
+ANALYSIS GUIDELINES:
+- Ethiopian dates may have garbled month names (like "90fAn")
+- Name should be in "First Middle Surname" format
+- FCN validation is MANDATORY -
+- Rate quality based on field completeness and readability
+- Note any OCR artifacts or misalignments
+
+Return ONLY JSON, no other text.         
+
+The Context ocr raw text is: '''
 
 
 class IDExtractor:
@@ -55,9 +81,8 @@ class IDExtractor:
         }
  
     def _call_model(self, raw_text: str, model: str = "openai/gpt-4.1"):
-        global prompt   # tell Python to use the global variable
+        global prompt   
         full_prompt = prompt + raw_text
-        print(full_prompt)
         payload = {
             "model": model,
             "messages": [
