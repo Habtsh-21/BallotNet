@@ -7,7 +7,7 @@ prompt = '''
 You are an expert Ethiopian National ID card analyzer. Extract and validate information from the raw OCR text.
 
 CRITICAL VALIDATION RULES:
-1. FCN (Family Card Number) MUST be exactly 12 digits. If not, return error JSON.
+1. FCN (Fiyda Card Number) MUST be exactly 12 digits. If not, return error JSON.
 2. Identify Ethiopian Calendar dates (EC) and Gregorian Calendar dates (GC)
 3. Check if main fields (Name, DOB, Expiry, FCN) are complete and readable
 

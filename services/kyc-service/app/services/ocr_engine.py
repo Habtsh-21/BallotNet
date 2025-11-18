@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 def extract_text(img):
     """Extract text using pytesseract with optimized configuration"""
     
-    # Configure pytesseract for ID documents
+    
     custom_config = r'--oem 3 --psm 6'
     
     try:
@@ -34,7 +34,6 @@ def extract_text_advanced(img):
             logger.warning(f"PSM {psm} failed: {e}")
             continue
     
-    # Return the result with most non-empty lines
     if results:
         best_result = max(results, key=lambda x: len([line for line in x[1].split('\n') if line.strip()]))
         return best_result[1].strip()

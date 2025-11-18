@@ -2,14 +2,15 @@
 python-multipart==0.0.9
 fastapi==0.95.2
 uvicorn[standard]==0.23.2
-pillow==10.0.0
+pillow>=10.0.0
 pytesseract==0.3.10
 openai>=1.0.0
 requests
+numpy>=1.24.0
 insightface>=0.7.3
 onnxruntime>=1.15.0
 opencv-python>=4.8.0
-numpy>=1.24.0
+
 
 
 
