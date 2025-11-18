@@ -18,6 +18,7 @@ DOCUMENT STRUCTURE:
 - Date of Birth: Ethiopian date (EC) above, Gregorian date (GC) below
 - Expiry Date & Sex: Labels may be misaligned - Ethiopian expiry date first, then Sex value, then Gregorian expiry date
 - Citizenship: Abbreviated as "ET" for Ethiopia
+- Rigion: Addis ababa or Amhara or Oromia ...
 - FCN: 12-digit Family Card Number (MUST BE VALID)
 
 EXTRACTION FIELDS:
@@ -27,6 +28,7 @@ EXTRACTION FIELDS:
 - expiry_date_gc (Gregorian Calendar - DD/MM/YYYY)
 - gender
 - citizenship
+- Rigion
 - fcn_number (12 digits)
 - extraction_quality (rating 1-10)
 - validation_errors (array of errors)
@@ -43,6 +45,7 @@ SUCCESS JSON:
     "expiry_date_gc": "01/01/1900", 
     "gender": "Male",
     "citizenship": "ET",
+    "Rigion": "Addis Ababa"
     "fcn_number": "285473403197",
     "extraction_quality": 7,
     "notes": ["Name appears valid", "Dates need verification", "FCN length issue"]
