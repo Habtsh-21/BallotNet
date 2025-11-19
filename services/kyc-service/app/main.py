@@ -18,8 +18,6 @@ app = FastAPI(
 
 token = os.getenv("GITHUB_TOKEN")
 model = os.getenv("MODEL", "openai/gpt-4.1")
-print(f"GITHUB_TOKEN loaded: {'Yes' if token else 'No'}")
-print(f"MODEL: {model}")
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -30,6 +28,7 @@ async def kyc_service(
     front_id_card: UploadFile = File(..., description="Front ID card image"),
     back_id_card: UploadFile = File(..., description="Back ID card image"),
     selfie: UploadFile = File(..., description="Selfie photo"),
+    user_data: str = Query(..., description="User data as JSON string"),
     preprocess: bool = Query(default=True, description="Apply image preprocessing"),
     advanced: bool = Query(default=False, description="Use advanced OCR with multiple strategies"),
     compare_faces: bool = Query(default=True, description="Compare selfie with ID photo")
@@ -48,6 +47,12 @@ async def kyc_service(
     temp_back_id_card_path  = None
     
     try:
+        try:
+            user_input = json.loads(user_data)
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON data: {str(e)}")
+        
+
         selfie_contents = await selfie.read()
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_selfie:
             temp_selfie.write(selfie_contents)
@@ -58,7 +63,7 @@ async def kyc_service(
             temp_front_id_card_path.write(front_id_card_contents)
             temp_front_id_card_path = temp_front_id_card_path.name
 
-        back_id_card_contents = await front_id_card.read()
+        back_id_card_contents = await back_id_card.read()
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_back_id_card_path:
             temp_back_id_card_path.write(back_id_card_contents)
             temp_back_id_card_path = temp_back_id_card_path.name
@@ -79,7 +84,7 @@ async def kyc_service(
             back_text  =  extract_text(back_id_card_image)
         
         llm = IDExtractor(token)
-        structured_data = llm.extract_to_json(front_text + back_text , model)
+        structured_data = llm.extract_to_json(front_text + back_text , user_data,model)
         
         if isinstance(structured_data, str):
             try:
@@ -105,8 +110,10 @@ async def kyc_service(
         
         if temp_selfie_path and os.path.exists(temp_selfie_path):
             os.unlink(temp_selfie_path)
-        if temp_id_card_path and os.path.exists(temp_id_card_path):
-            os.unlink(temp_id_card_path)
+        if temp_front_id_card_path and os.path.exists(temp_front_id_card_path):
+            os.unlink(temp_front_id_card_path)
+        if temp_back_id_card_path and os.path.exists(temp_back_id_card_path):
+            os.unlink(temp_back_id_card_path)
         
         response = {
             "status": "success",
@@ -127,15 +134,19 @@ async def kyc_service(
                 selfie_result["status"] == "success" and 
                 face_comparison_result.get("verified", False)
             )
+
+
         
         return response
         
     except Exception as e:
         if temp_selfie_path and os.path.exists(temp_selfie_path):
             os.unlink(temp_selfie_path)
-        if temp_id_card_path and os.path.exists(temp_id_card_path):
-            os.unlink(temp_id_card_path)
-            
+        if temp_front_id_card_path and os.path.exists(temp_front_id_card_path):
+            os.unlink(temp_front_id_card_path)
+        if temp_back_id_card_path and os.path.exists(temp_back_id_card_path):
+            os.unlink(temp_back_id_card_path)
+               
         raise HTTPException(
             status_code=500,
             detail=f"Error processing KYC: {str(e)}"
